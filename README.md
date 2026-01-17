@@ -8,6 +8,8 @@
 
 # Python: Garmin Connect
 
+> **Note:** This is a fork of [python-garminconnect](https://github.com/cyberjunky/python-garminconnect) that uses [uv](https://docs.astral.sh/uv/) instead of PDM for dependency management. This change was made due to uv's growing adoption in the Python ecosystem, its significantly faster performance, and its unified approach to Python project management.
+
 The Garmin Connect API library comes with two examples:
 
 - **`example.py`** - Simple getting-started example showing authentication, token storage, and basic API calls
@@ -93,16 +95,17 @@ python3 -m pip install garminconnect
 ## Run demo software (recommended)
 
 ```bash
-python3 -m venv .venv --copies
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-pip install pdm
-pdm install --group :example
+# Install uv if you haven't already
+# See: https://docs.astral.sh/uv/getting-started/installation/
+
+# Install dependencies and run examples
+uv sync --group example
 
 # Run the simple example
-python3 ./example.py
+uv run python example.py
 
 # Run the comprehensive demo
-python3 ./demo.py
+uv run python demo.py
 ```
 
 
@@ -110,68 +113,56 @@ python3 ./demo.py
 
 Set up a development environment for contributing:
 
-> **Note**: This project uses [PDM](https://pdm.fming.dev/) for modern Python dependency management and task automation. All development tasks are configured as PDM scripts in `pyproject.toml`. The Python interpreter is automatically configured to use `.venv/bin/python` when you create the virtual environment.
+> **Note**: This project uses [uv](https://docs.astral.sh/uv/) for fast, modern Python dependency management. uv automatically manages virtual environments and provides a unified experience for Python project management.
 
 **Environment Setup:**
 
-> **⚠️ Important**: On externally-managed Python environments (like Debian/Ubuntu), you must create a virtual environment before installing PDM to avoid system package conflicts.
-
 ```bash
-# 1. Create and activate a virtual environment
-python3 -m venv .venv --copies
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+# 1. Install uv (if not already installed)
+# macOS/Linux:
+curl -LsSf https://astral.sh/uv/install.sh | sh
+# Or via Homebrew: brew install uv
 
-# 2. Install PDM (Python Dependency Manager)
-pip install pdm
+# 2. Install all development dependencies (creates .venv automatically)
+uv sync --all-groups
 
-# 3. Install all development dependencies
-pdm install --group :all
-
-# 4. Install optional tools for enhanced development experience
-pip install "black[jupyter]" codespell pre-commit
-
-# 5. Setup pre-commit hooks (optional)
-pre-commit install --install-hooks
-```
-
-**Alternative for System-wide PDM Installation:**
-```bash
-# Install PDM via pipx (recommended for system-wide tools)
-python3 -m pip install --user pipx
-pipx install pdm
-
-# Then proceed with project setup
-pdm install --group :all
+# 3. Setup pre-commit hooks (optional)
+uv run pre-commit install --install-hooks
 ```
 
 **Available Development Commands:**
 ```bash
-pdm run format      # Auto-format code (isort, black, ruff --fix)
-pdm run lint        # Check code quality (isort, ruff, black, mypy)
-pdm run codespell   # Check spelling errors (install codespell if needed)
-pdm run test        # Run test suite
-pdm run testcov     # Run tests with coverage report
-pdm run all         # Run all checks
-pdm run clean      # Clean build artifacts and cache files
-pdm run build      # Build package for distribution
-pdm run publish    # Build and publish to PyPI
-```
+# Formatting
+uv run ruff check . --fix --unsafe-fixes  # Auto-fix linting issues
+uv run isort . --skip-gitignore           # Sort imports
+uv run black -l 88 .                      # Format code
 
-**View all available commands:**
-```bash
-pdm run --list     # Display all available PDM scripts
+# Linting
+uv run isort --check-only . --skip-gitignore  # Check import order
+uv run ruff check .                           # Check linting
+uv run black -l 88 . --check --diff           # Check formatting
+uv run mypy garminconnect tests               # Type checking
+
+# Testing
+uv run coverage run -m pytest -v --durations=10  # Run tests with coverage
+uv run coverage html                             # Generate HTML report
+uv run coverage xml -o coverage/coverage.xml     # Generate XML report
+
+# Building
+uv build                                   # Build package for distribution
+uv publish                                 # Publish to PyPI
 ```
 
 **Code Quality Workflow:**
 ```bash
 # Before making changes
-pdm run lint       # Check current code quality
+uv run ruff check .           # Check current code quality
 
 # After making changes
-pdm run format     # Auto-format your code
-pdm run lint       # Verify code quality
-pdm run codespell  # Check spelling
-pdm run test       # Run tests to ensure nothing broke
+uv run ruff check . --fix     # Auto-fix issues
+uv run black -l 88 .          # Format code
+uv run mypy garminconnect     # Type check
+uv run pytest -v              # Run tests
 ```
 
 Run these commands before submitting PRs to ensure code quality standards.
@@ -216,22 +207,23 @@ Create tokens in ~/.garminconnect by running the example program.
 
 ```bash
 # Install development dependencies
-pdm install --group :all
+uv sync --all-groups
 ```
 
 **Run Tests:**
 
 ```bash
-pdm run test        # Run all tests
-pdm run testcov     # Run tests with coverage report
+uv run pytest -v                                     # Run all tests
+uv run coverage run -m pytest -v --durations=10     # Run with coverage
+uv run coverage html                                 # Generate HTML report
 ```
 
 Optional: keep test tokens isolated
 
 ```bash
 export GARMINTOKENS="$(mktemp -d)"
-python3 ./example.py # create fresh tokens for tests
-pdm run test
+uv run python example.py  # create fresh tokens for tests
+uv run pytest -v
 ```
 
 **Note:** Tests automatically use `~/.garminconnect` as the default token file location. You can override this by setting the `GARMINTOKENS` environment variable. Run `example.py` first to generate authentication tokens for testing.
@@ -245,40 +237,24 @@ For package maintainers:
 **Setup PyPI credentials:**
 
 ```bash
-pip install twine
-# Edit with your preferred editor, or create via here-doc:
-# cat > ~/.pypirc <<'EOF'
-# [pypi]
-# username = __token__
-# password = <PyPI_API_TOKEN>
-# EOF
-```
+# Option 1: Use environment variables (recommended)
+export UV_PUBLISH_USERNAME="__token__"
+export UV_PUBLISH_PASSWORD="<PyPI_API_TOKEN>"
 
-```ini
+# Option 2: Use ~/.pypirc file
+cat > ~/.pypirc <<'EOF'
 [pypi]
 username = __token__
 password = <PyPI_API_TOKEN>
-```
-
-Recommended: use environment variables and restrict file perms
-
-```bash
+EOF
 chmod 600 ~/.pypirc
-export TWINE_USERNAME="__token__"
-export TWINE_PASSWORD="<PyPI_API_TOKEN>"
 ```
 
 **Publish new version:**
 
 ```bash
-pdm run publish    # Build and publish to PyPI
-```
-
-**Alternative publishing steps:**
-
-```bash
-pdm run build      # Build package only
-pdm publish        # Publish pre-built package
+uv build           # Build package
+uv publish         # Publish to PyPI
 ```
 
 ## 🤝 Contributing
@@ -291,26 +267,24 @@ We welcome contributions! Here's how you can help:
 - **Documentation**: Improve examples, add use cases, fix typos
 
 **Before Contributing:**
-1. Set up development environment (`pdm install --group :all`)
-2. Execute code quality checks (`pdm run format && pdm run lint`)
-3. Test your changes (`pdm run test`)
+1. Set up development environment (`uv sync --all-groups`)
+2. Execute code quality checks (`uv run ruff check . --fix && uv run black -l 88 .`)
+3. Test your changes (`uv run pytest -v`)
 4. Follow existing code style and patterns
 
 **Development Workflow:**
 ```bash
-# 1. Setup environment (with virtual environment)
-python3 -m venv .venv --copies
-source .venv/bin/activate
-pip install pdm
-pdm install --group :all
+# 1. Setup environment
+uv sync --all-groups
 
 # 2. Make your changes
 # ... edit code ...
 
 # 3. Quality checks
-pdm run format     # Auto-format code
-pdm run lint       # Check code quality
-pdm run test       # Run tests
+uv run ruff check . --fix   # Auto-fix linting issues
+uv run black -l 88 .        # Format code
+uv run mypy garminconnect   # Type check
+uv run pytest -v            # Run tests
 
 # 4. Submit PR
 git commit -m "Your changes"
